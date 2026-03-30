@@ -77,8 +77,45 @@ This is the place for you to write reflections:
 ### Mandatory (Publisher) Reflections
 
 #### Reflection Publisher-1
+**1. In the Observer pattern diagram explained by the Head First Design Pattern book, Subscriber is defined as an interface. Explain based on your understanding of Observer design patterns, do we still need an interface (or trait in Rust) in this BambangShop case, or a single Model struct is enough?**
 
+**Answer:** Dalam studi kasus BambangShop, penggunaan sebuah struct model tunggal sudah cukup memadai tanpa perlu mendefinisikan interface (atau trait dalam Rust). Berdasarkan pola desain Observer, interface pada subscriber umumnya dirancang untuk mencapai polimorfisme ketika sistem memiliki berbagai jenis penerima dengan mekanisme notifikasi yang berbeda-beda. Namun, karena semua subscriber pada aplikasi BambangShop memiliki perilaku yang seragam, yaitu menerima notifikasi secara eksklusif melalui HTTP POST request ke URL Webhook, abstraksi tambahan menggunakan trait menjadi tidak diperlukan. Implementasi trait baru akan relevan dan dibutuhkan secara arsitektural apabila di masa depan sistem perlu mengakomodasi variasi tipe subscriber dengan logika pemrosesan yang berbeda, seperti pengiriman notifikasi melalui email atau SMS.
+
+---
+
+**2. id in Program and url in Subscriber is intended to be unique. Explain based on your understanding, is using Vec (list) sufficient or using DashMap (map/dictionary) like we currently use is necessary for this case?**
+
+**Answer:** Penggunaan `Vec` sebenarnya cukup secara fungsional untuk menyimpan data, namun tidak efisien untuk menjamin keunikan data. Jika menggunakan `Vec`, sistem harus melakukan iterasi pencarian linear dengan kompleksitas waktu O(N) setiap kali ingin memastikan tidak ada duplikasi `id` atau `url`. Sebaliknya, penggunaan `DashMap` sangat diperlukan karena struktur data ini menggunakan sistem key-value pair yang menjamin keunikan key. Selain itu, proses pencarian dan penyisipan data pada `Map` beroperasi dengan kompleksitas waktu O(1), yang memberikan performa lebih optimal.
+
+---
+
+**3. When programming using Rust, we are enforced by rigorous compiler constraints to make a thread-safe program. In the case of the List of Subscribers (SUBSCRIBERS) static variable, we used the DashMap external library for thread safe HashMap. Explain based on your understanding of design patterns, do we still need DashMap or we can implement Singleton pattern instead?**
+
+**Answer:** Singleton pattern adalah pola desain yang memastikan hanya ada satu instance objek (`SUBSCRIBERS`) yang bersifat global, sedangkan `DashMap` adalah struktur data thread-safe HashMap. Pada kenyataannya, kita tetap membutuhkan DashMap di dalam implementasi Singleton. Penggunaan `lazy_static!` sendiri sudah merupakan bentuk penerapan pola Singleton di Rust. Namun, memiliki Singleton saja tidak cukup. Web framework memproses permintaan secara asinkron dan multi-threading, sehingga jika kita menempatkan HashMap standar di dalam Singleton, kompilator Rust akan menolaknya karena tingginya risiko data race akibat mutasi dari berbagai thread. Oleh karena itu, implementasi Singleton di Rust yang menangani mutasi data konkuren mutlak membutuhkan struktur data internal yang thread-safe seperti DashMap (atau dibungkus dengan primitif sinkronisasi seperti Mutex/RwLock) agar program dapat dikompilasi dan berjalan dengan aman.
+
+---
 
 #### Reflection Publisher-2
+**1. In the Model-View Controller (MVC) compound pattern, there is no“Service” and “Repository”. Model in MVC covers both data storage and business logic. Explain based on your understanding of design principles, why we need to separate “Service” and “Repository” from a Model?**
+
+**Answer:** Pemisahan Service dan Repository dari Model sangat berkaitan erat dengan penerapan *Single Responsibility Principle* dan *Separation of Concerns* dalam desain perangkat lunak. Pada MVC konvensional Model melakukan penyimpanan data sekaligus *business logic*. Seiring membesarnya aplikasi, hal ini akan memicu *Fat Model* yang membuat kode sulit di maintain dan diuji secara terisolasi. Melalui pemisahan ini tanggung jawab menjadi terdistribusi dengan jelas:
+1. Model hanya berfungsi sebagai representasi struktur data
+2. Repository berfokus eksklusif pada akses dan manipulasi data ke database
+3. Service berfokus penuh untuk menangani *business logic* dan aturan sistem.
+
+Pemisahan ini menghasilkan arsitektur yang tingkat ketergantungan antar komponen yang rendah, di mana perubahan pada teknologi *database* hanya akan berdampak pada Repository, dan logika bisnis pada Service dapat di uji secara independen menggunakan *mock repository*.
+
+---
+
+**2. What happens if we only use the Model? Explain your imagination on how the interactions between each model (Program, Subscriber, Notification) affect the code complexity for each model?**
+
+**Answer:** Jika hanya mengandalkan Model tanpa mendistribusikan tanggung jawab ke layer Service dan Repository, seluruh interaksi, manipulasi data, dan *business logic* akan tertumpuk di satu tempat. Dampak buruk dari kompleksitas kode ini, antara lain:
+1. Pelanggaran Single Responsibility Principle (SRP): Model melakukan tugas-tugas yang di luar lingkupnya
+2. Spaghetti Code: Ketergantungan langsung antar-model membuat program sangat sulit untuk dibaca dan dikembangkan.
+3. High Testing Complexity: Sulit untuk melakukan unit testing pada model secara terisolasi, karena pengujian satu entitas akan mengharuskan kita untuk ikut melakukan mocking pada koneksi database dan respon HTTP client yang menempel padanya.
+
+**3. Have you explored more about Postman? Tell us how this tool helps you to test your current work. You might want to also list which features in Postman you are interested in or feel like it is helpful to help your Group Project or any of your future software engineering projects.**
+
+**Answer:** Pada pengerjaan saat ini, fitur Postman Collections sangat membantu untuk mengorganisasi, menyimpan, dan mengeksekusi berbagai HTTP request beserta payload JSON yang dibutuhkan secara berulang. Terdapat beberapa fitur tingkat lanjut di Postman yang sangat menarik untuk dimanfaatkan. Pertama adalah fitur Environments dan Variables, yang memungkinkan transisi pengujian API dari localhost ke server production dengan sangat mulus. Kedua adalah Automated API Testing (tab Tests), di mana kita bisa menulis script untuk memvalidasi status code dan struktur JSON secara otomatis setiap kali request dikirim. Terakhir, fitur API Documentation dan Mock Servers akan sangat memfasilitasi kolaborasi, sehingga pengembang frontend dan backend dapat menyepakati "kontrak" API secara terpusat.
 
 #### Reflection Publisher-3
