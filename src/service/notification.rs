@@ -13,7 +13,15 @@ impl NotificationService {
     pub fn subscribe(product_type: &str, subscriber: Subscriber) -> Result<Subscriber> {
         let product_type_upper: String = product_type.to_uppercase();
         let product_type_str: &str = product_type_upper.as_str();
-        let subscriber_result: Subscriber = SubscriberRepository::add(product_type_upper, subscriber);
-        return Ok(subscriber_result);
+        let result: Option<Subscriber> = SubscriberRepository::delete(product_type_str, url);
+
+        if result.is_none() {
+            return Err(compose_error_response(
+                Status::NotFound, 
+                "Product type not found"
+            ));
+        }
+
+        return Ok(result.unwrap());
     }
 }
