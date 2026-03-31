@@ -114,8 +114,43 @@ Pemisahan ini menghasilkan arsitektur yang tingkat ketergantungan antar komponen
 2. Spaghetti Code: Ketergantungan langsung antar-model membuat program sangat sulit untuk dibaca dan dikembangkan.
 3. High Testing Complexity: Sulit untuk melakukan unit testing pada model secara terisolasi, karena pengujian satu entitas akan mengharuskan kita untuk ikut melakukan mocking pada koneksi database dan respon HTTP client yang menempel padanya.
 
+---
+
 **3. Have you explored more about Postman? Tell us how this tool helps you to test your current work. You might want to also list which features in Postman you are interested in or feel like it is helpful to help your Group Project or any of your future software engineering projects.**
 
 **Answer:** Pada pengerjaan saat ini, fitur Postman Collections sangat membantu untuk mengorganisasi, menyimpan, dan mengeksekusi berbagai HTTP request beserta payload JSON yang dibutuhkan secara berulang. Terdapat beberapa fitur tingkat lanjut di Postman yang sangat menarik untuk dimanfaatkan. Pertama adalah fitur Environments dan Variables, yang memungkinkan transisi pengujian API dari localhost ke server production dengan sangat mulus. Kedua adalah Automated API Testing (tab Tests), di mana kita bisa menulis script untuk memvalidasi status code dan struktur JSON secara otomatis setiap kali request dikirim. Terakhir, fitur API Documentation dan Mock Servers akan sangat memfasilitasi kolaborasi, sehingga pengembang frontend dan backend dapat menyepakati "kontrak" API secara terpusat.
 
+---
+
 #### Reflection Publisher-3
+**1. Observer Pattern has two variations: Push model (publisher pushes data to subscribers) and Pull model (subscribers pull data from publisher). In this tutorial case, which variation of Observer Pattern that we use?**
+
+**Answer:** Dalam tutorial ini, variasi pola desain Observer yang digunakan adalah Push Model. Pada implementasi ini, Publisher (aplikasi utama) secara aktif mengirimkan data notifikasi (payload) secara lengkap, seperti detail produk dan statusnya langsung kepada para Subscribers setiap kali terjadi sebuah event (pembuatan, promosi, atau penghapusan produk). Hal ini dibuktikan melalui eksekusi metode update() pada model Subscriber, di mana sistem melakukan HTTP POST request untuk mengirimkan data secara langsung ke URL webhook milik subscriber. Oleh karena itu, Subscriber bertindak pasif dan tidak perlu melakukan request tambahan untuk menarik (pull) data dari Publisher.
+
+---
+
+**2. What are the advantages and disadvantages of using the other variation of Observer Pattern for this tutorial case? (example: if you answer Q1 with Push, then imagine if we used Pull)**
+
+**Answer:** Jika aplikasi BambangShop menggunakan variasi Pull Model, Publisher hanya akan mengirimkan notifikasi ringkas (misalnya hanya berupa event type dan id produk) tanpa menyertakan payload data yang lengkap. Selanjutnya, Subscriber yang harus secara aktif melakukan request (menarik data) ke Publisher untuk mendapatkan detail informasi tersebut. Berikut adalah analisis kelebihan dan kekurangannya untuk kasus ini:
+
+Kelebihan (Advantages):
+
+1. Payload awal yang dikirimkan oleh Publisher sangat kecil, sehingga menghemat bandwidth pada proses broadcasting notifikasi pertama.
+
+2. Subscriber memiliki kendali penuh kapan mereka ingin menarik (pull) data detailnya. Jika Subscriber sedang mengalami high load, mereka bisa menunda penarikan data, atau bahkan mengabaikannya jika data tersebut dirasa tidak relevan bagi sistem mereka.
+
+3. Publisher dapat menambahkan layar otorisasi (seperti validasi token) saat Subscriber mencoba menarik detail data, sehingga memastikan hanya Subscriber yang berhak yang bisa membaca detail produknya.
+
+Kekurangan (Disadvantages):
+
+1. Jika terdapat 1000 subscriber, Publisher tidak hanya mengirim 1000 ping notifikasi, tetapi sesaat kemudian Publisher akan langsung dihujani oleh 1000 HTTP GET request secara bersamaan dari para subscriber yang ingin menarik data. Hal ini dapat membebani server dan menyebabkan DDoS-like effect.
+
+2. Harus ada penambahan logika ekstra di kedua sisi. Subscriber harus mengimplementasikan fungsi untuk melakukan fetching data tambahan, dan Publisher harus menyediakan API endpoint khusus (seperti GET /product/<id>) yang mampu menangani request massal.
+
+3. Subscriber membutuhkan waktu yang lebih lama untuk mendapatkan informasi utuh karena harus melalui proses round-trip komunikasi dua kali (menerima ping lalu melakukan request detail).
+
+---
+
+**3. Explain what will happen to the program if we decide to not use multi-threading in the notification process.**
+
+**Answer:** Jika kita memutuskan untuk tidak menggunakan multi-threading (seperti thread::spawn) dalam proses notifikasi, maka iterasi pengiriman HTTP request ke setiap subscriber akan berjalan secara sinkron dan sekuensial. Dampak utamanya adalah terjadinya I/O Blocking yang menyebabkan penurunan performa secara drastis (bottleneck). Waktu eksekusi program akan terakumulasi seiring dengan jumlah subscriber; misalnya, mengirim ke 1000 subscriber akan memakan waktu 1000 kali lipat dari waktu satu request. Selain itu, sistem menjadi tidak fault-tolerant. Jika salah satu URL subscriber mengalami timeout atau lambat merespon, proses iterasi akan tertahan, sehingga menunda pengiriman notifikasi ke subscriber lainnya. Dari sisi klien yang memicu event (misal: saat menambahkan produk), mereka akan mengalami latensi respon (waktu tunggu/loading) yang sangat lama karena thread utama tertahan oleh proses pengiriman notifikasi massal tersebut.
